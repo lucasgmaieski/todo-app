@@ -2,31 +2,37 @@ import { Task } from "@/src/components/task";
 import { Button } from "@/src/components/button";
 import { EmptyList } from "@/src/components/emptyList";
 import { HeaderList } from "@/src/components/headerList";
-import { ReactHTMLElement, useState } from "react";
-import { Text, TextInput, Alert, View, ScrollView, FlatList, NativeSyntheticEvent, TextInputChangeEventData, ImageBackground } from "react-native";
+import { useState } from "react";
+import { Text, TextInput, Alert, View, ScrollView, ImageBackground } from "react-native";
+import { TaskType } from "@/src/types/task";
 
 export default function Home() {
-    // const imageBg = {uri: "../assets/background.jpg"}
-    const [tasks, setTasks] = useState<string[]>([])
-
+    const [tasks, setTasks] = useState<TaskType[]>([])
+    const [tabActive, setTabActive] = useState<0 | 1>(0);
     const [inputName, setInputName] = useState<string>("");
 
     function handleParticipantAdd() {
-        if(inputName !== ''  && tasks.includes(inputName)) {
-            return Alert.alert("Participante existe", "Já existe um participante com esse nome.");
-        }
-
-        setTasks(prevState => [...prevState, inputName]);
+        if(inputName.trim() === "") return Alert.alert("Campo vázio", "Digite a descrição da sua tarefa");
+        
+        setTasks((prevTasks) => [...prevTasks, {description: inputName, done: 0}]);
         setInputName("");
     }
-    function handleTaskRemove(name: string) {
-
-        Alert.alert("Remover", `Remover o participante ${name}?`, [
+    function handleTaskDone(description: string) {
+        const updatedTasks: TaskType[]= tasks.map((item) => {
+            if (item.description === description) {
+                return { ...item, done: item.done === 0 ? 1 : 0 };
+            };
+            return item;
+        })
+        setTasks(updatedTasks);
+    }
+    function handleTaskRemove(description: string) {
+        Alert.alert("Remover", `Remover a tarefa ${description}?`, [
             {
                 text: 'Sim',
                 onPress: () => {
                     Alert.alert("Deletado!")
-                    setTasks(prevState => prevState.filter(participant => participant !== name))
+                    setTasks(prevState => prevState.filter(item => item.description !== description))
                 }
             },
             {
@@ -50,27 +56,42 @@ export default function Home() {
                 </View>
                 <View className="relative flex-1 my-5 rounded-md overflow-hidden gap-1">
                     <View className="absolute w-full h-full bg-gray-700 opacity-60 rounded-md" ></View>
-                    <HeaderList />
+                    <HeaderList tabActive={tabActive} setTabActive={setTabActive} quantityDone={tasks.filter(item => item.done === 1).length} quantityTotal={tasks.length}/>
                     {tasks.length > 0 &&
                         <ScrollView>
                             {
-                                tasks.map((participant, index) => (
-                                    <Task
-                                        key={index}
-                                        name={participant}
-                                        onRemove={() => handleTaskRemove(participant)}
-                                    />
-                                ))
+                                tasks.map((item, index) => { 
+                                    if(tabActive === 0)
+                                    {
+                                        return (
+                                            <Task
+                                                key={index}
+                                                item={item}
+                                                onRemove={() => handleTaskRemove(item.description)}
+                                                onDone={() => handleTaskDone(item.description)}
+                                            />
+                                        )
+                                    }
+
+                                    else if(item.done === tabActive) {
+                                        return (
+                                            <Task
+                                                key={index}
+                                                item={item}
+                                                onRemove={() => handleTaskRemove(item.description)}
+                                                onDone={() => handleTaskDone(item.description)}
+                                            />
+                                        )
+                                    }
+                                })
                             }
                         </ScrollView>
                     }
                     {tasks.length === 0 &&
-                        <EmptyList />
+                        <EmptyList tabActive={tabActive}/>
                     }
                 </View>
-                
             </View>
         </ImageBackground>
-
     );
 }
